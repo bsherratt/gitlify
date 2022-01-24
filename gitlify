@@ -183,7 +183,8 @@ function init {
   #   later (ideally *before* publishing the git repository).
   cd "$target"
   git svn init "$url" \
-    --stdlayout --branches='branches/dev/*/*' \
+    --stdlayout \
+    --branches='branches/dev/*/*' --branches='branches/pkg/*/*' \
     --prefix='fcm/' #--no-metadata
 
   # Ensure we have sufficient metadata for contributing users - creates a file
