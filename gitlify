@@ -153,6 +153,15 @@ function get-users {
 }
 
 function init {
+  # Handle options
+  metadata=
+  while getopts ':m:' opt; do
+    case $opt in
+      m) metadata=$(realpath "$OPTARG");;
+    esac
+  done
+  shift $(( OPTIND-1 ))
+
   src=$1
   url=$(parse-url "$src")
   target=${2:-$(basename "$url")}
@@ -160,6 +169,23 @@ function init {
   # Create working directory
   [ -d "$target" ] && rm -rf "$target"
   git init "$target"
+
+  if [[ ! "$metadata" ]]; then
+    # Ensure we have sufficient metadata for contributing users - creates a file
+    # `users-all.txt` with a simple list of usernames, and `users-metadata.txt`
+    # with names and corresponding email addresses, where possible.
+    # TODO: Consider whether we want actual names included here, or if leaving
+    # usernames is fine.
+    get-users "$src"
+    metadata=users-metadata.txt
+  fi
+  cp -p "$metadata" "$target/.git/users-metadata.txt"
+
+  # Name of a file that can be run, with the first argument a name not in
+  # authors-file, which outputs a name and email as for the authors-file.
+  if [[ -x missing-name ]]; then
+    cp -p missing-name "$target/.git"
+  fi
 
   # Add extra svn metadata to the git repository
   #
@@ -187,21 +213,9 @@ function init {
     --branches='branches/dev/*/*' --branches='branches/pkg/*/*' \
     --prefix='fcm/' #--no-metadata
 
-  # Ensure we have sufficient metadata for contributing users - creates a file
-  # `users-all.txt` with a simple list of usernames, and `users-metadata.txt`
-  # with names and corresponding email addresses, where possible.
-  # TODO: Consider whether we want actual names included here, or if leaving
-  # usernames is fine.
-  get-users "$src"
-  cp -p users-metadata.txt "$target/.git"
+  # Point to the metadata files
   git config svn.authorsfile .git/users-metadata.txt
-
-  # Name of a file that can be run, with the first argument a name not in
-  # authors-file, which outputs a name and email as for the authors-file.
-  if [[ -x missing-name ]]; then
-    cp -p missing-name "$target/.git"
-    git config svn.authorsprog .git/missing-name
-  fi
+  git config svn.authorsprog .git/missing-name
 
   # Don't let git try and make empty folders that svn was tracking
   git config svn-remote.svn.automkdirs false
